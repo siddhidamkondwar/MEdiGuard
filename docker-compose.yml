@@ -1,0 +1,18 @@
+# Local Redpanda broker (Kafka-compatible). Used by the speed layer later.
+# Start with:  docker compose up -d
+# The config.yaml streaming.kafka.bootstrap_servers points at localhost:19092.
+services:
+  redpanda:
+    image: redpandadata/redpanda:v24.2.7
+    command:
+      - redpanda start
+      - --overprovisioned
+      - --smp 1
+      - --memory 1G
+      - --reserve-memory 0M
+      - --node-id 0
+      - --check=false
+      - --kafka-addr PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:19092
+      - --advertise-kafka-addr PLAINTEXT://redpanda:29092,OUTSIDE://localhost:19092
+    ports:
+      - "19092:19092"   # external listener used from the host

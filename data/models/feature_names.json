@@ -1,0 +1,26 @@
+{
+  "feature_version": "1.0.0",
+  "features": [
+    "n_lines",
+    "los_days",
+    "total_billed_inr",
+    "avg_line_inr",
+    "max_line_inr",
+    "distinct_procedures",
+    "r1_overbilling_count",
+    "r2_dx_mismatch_count",
+    "r3_stay_logic_count",
+    "r4_cost_outlier_count",
+    "n_findings",
+    "n_high_severity",
+    "total_excess_inr",
+    "excess_ratio",
+    "share_lines_flagged",
+    "cost_lines_above_band",
+    "cost_gap_over_p95_inr",
+    "cost_gap_ratio",
+    "max_pct_over_median",
+    "worst_cost_severity",
+    "n_unmapped_codes"
+  ]
+}
