@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MediGuard AI — Architecture</title>
+<style>
+:root{
+  --bg:#faf9f7; --surface:#ffffff; --surface-2:#f4f2ee; --border:#e2ded6;
+  --text:#1f1e1c; --text-2:#5f5d57; --text-3:#8a877f;
+  --accent:#185fa5; --accent-bg:#e6f1fb;
+  --new:#3b6d11; --new-bg:#eaf3de;
+  --fix:#a32d2d; --fix-bg:#fcebeb;
+  --core:#534ab7; --core-bg:#eeedfe;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#17171a; --surface:#212126; --surface-2:#2a2a30; --border:#3a3a42;
+    --text:#eceae6; --text-2:#a8a5a0; --text-3:#7d7a75;
+    --accent:#85b7eb; --accent-bg:#0c447c;
+    --new:#97c459; --new-bg:#27500a;
+    --fix:#f09595; --fix-bg:#791f1f;
+    --core:#afa9ec; --core-bg:#3c3489;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);
+  font:400 15px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+.wrap{max-width:1080px;margin:0 auto;padding:40px 24px 80px}
+h1{font-size:26px;font-weight:500;margin:0 0 6px}
+h2{font-size:19px;font-weight:500;margin:48px 0 4px;padding-top:20px;border-top:1px solid var(--border)}
+h3{font-size:15px;font-weight:500;margin:22px 0 8px}
+p{margin:8px 0}
+.sub{color:var(--text-2);font-size:14px;margin:0 0 4px}
+.tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:5px;vertical-align:1px;margin-left:6px;font-weight:500}
+.t-new{background:var(--new-bg);color:var(--new)}
+.t-fix{background:var(--fix-bg);color:var(--fix)}
+.t-core{background:var(--core-bg);color:var(--core)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;margin:16px 0 0;font-size:13px;color:var(--text-2)}
+
+.flow{margin:24px 0}
+.band{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin:0}
+.band-h{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);margin:0 0 10px}
+.row{display:grid;gap:10px}
+.c2{grid-template-columns:1fr 1fr}
+.c3{grid-template-columns:repeat(3,1fr)}
+.c4{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+@media(max-width:720px){.c2,.c3{grid-template-columns:1fr}}
+.box{background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:10px 12px}
+.box.core{border-color:var(--core);background:var(--core-bg)}
+.box.core .bt,.box.core .bd{color:var(--core)}
+.bt{font-size:14px;font-weight:500;margin:0}
+.bd{font-size:12.5px;color:var(--text-2);margin:3px 0 0;line-height:1.5}
+.bd code{font-family:var(--mono);font-size:11.5px}
+.arrow{text-align:center;color:var(--text-3);font-size:13px;padding:7px 0;font-family:var(--mono)}
+
+table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13.5px}
+th{text-align:left;font-weight:500;color:var(--text-2);border-bottom:1px solid var(--border);padding:8px 10px 8px 0;font-size:12.5px}
+td{padding:8px 10px 8px 0;border-bottom:1px solid var(--border);vertical-align:top}
+tr:last-child td{border-bottom:none}
+code{font-family:var(--mono);font-size:12.5px;background:var(--surface-2);padding:1px 5px;border-radius:4px}
+td code{background:none;padding:0}
+
+.tabs{display:flex;gap:6px;margin:16px 0 0;flex-wrap:wrap}
+.tab{font:inherit;font-size:13.5px;padding:6px 14px;border:1px solid var(--border);background:var(--surface);
+  color:var(--text-2);border-radius:7px;cursor:pointer}
+.tab[aria-selected=true]{background:var(--accent-bg);color:var(--accent);border-color:var(--accent)}
+pre{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;
+  overflow-x:auto;font-family:var(--mono);font-size:12.5px;line-height:1.6;margin:10px 0}
+.note{background:var(--accent-bg);border-radius:8px;padding:12px 14px;margin:14px 0;font-size:14px}
+.note b{font-weight:500}
+@media (prefers-color-scheme:dark){.note{color:#e6f1fb}}
+footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--border);color:var(--text-3);font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>MediGuard AI — system architecture</h1>
+<p class="sub">Delta Lakehouse-backed Lambda for explainable hospital-bill fraud detection. Free-tier deployment.</p>
+<div class="legend">
+  <span><span class="tag t-core">core</span> graded big-data layer</span>
+  <span><span class="tag t-new">new</span> added in review</span>
+  <span><span class="tag t-fix">fix</span> corrects a design error</span>
+</div>
+
+<h2>1. Pipeline</h2>
+
+<div class="flow">
+
+<div class="band">
+  <p class="band-h">Sources</p>
+  <div class="row c3">
+    <div class="box"><p class="bt">Synthea</p><p class="bd">FHIR bundles, clinical pathways, discharge narratives. Source of truth for diagnosis→procedure norms.</p></div>
+    <div class="box"><p class="bt">CMS DE-SynPUF</p><p class="bd">Claim volume and provider distribution only. Correlations are degraded by design — not used for clinical norms.</p></div>
+    <div class="box"><p class="bt">Code sets</p><p class="bd">SNOMED→ICD-10 map, CPT, PM-JAY HBP 2.2 rates. Small, broadcast.</p></div>
+  </div>
+</div>
+
+<div class="arrow">↓</div>
+
+<div class="band">
+  <p class="band-h">Ingestion gate <span class="tag t-core">core</span></p>
+  <div class="row c3">
+    <div class="box"><p class="bt">Validate</p><p class="bd">Pydantic / pandera schema, types, ranges, required fields.</p></div>
+    <div class="box"><p class="bt">Deduplicate</p><p class="bd">Spark <code>dropDuplicates</code> on <code>(claim_id, line_no)</code>, window picks latest.</p></div>
+    <div class="box"><p class="bt">Pseudonymise <span class="tag t-new">new</span></p><p class="bd">Salted hash of patient id, drop name / address / contact. Makes the DPDP claim real.</p></div>
+    <div class="box"><p class="bt">Map codes <span class="tag t-new">new</span></p><p class="bd">SNOMED→ICD-10, CPT→HBP 2.2. Report coverage %.</p></div>
+    <div class="box"><p class="bt">Normalise cost <span class="tag t-new">new</span></p><p class="bd">USD→INR at PPP, plus tier / city / lognormal variation. Without this the cost model has nothing to learn.</p></div>
+    <div class="box"><p class="bt">Profile</p><p class="bd">Nulls, outliers, coverage → <code>quality_report</code>.</p></div>
+  </div>
+  <p class="bd" style="margin-top:10px">Emits one canonical claim-line schema. The same module is imported by batch and streaming — otherwise the two layers drift and reconciliation fails for the wrong reason.</p>
+</div>
+
+<div class="arrow">↓ bulk &nbsp;·&nbsp; ↓ events</div>
+
+<div class="row c2">
+  <div class="band">
+    <p class="band-h">Batch layer <span class="tag t-core">core</span></p>
+    <div class="row">
+      <div class="box core"><p class="bt">build_corpus</p><p class="bd">partitionBy(year, month) + Z-ORDER provider_id <span class="tag t-fix">fix</span> — Delta has no bucketBy.</p></div>
+      <div class="box core"><p class="bt">mine_baselines</p><p class="bd">Wide groupBy, approxQuantile, salted skew handling <span class="tag t-new">new</span>.</p></div>
+      <div class="box core"><p class="bt">provider_graph</p><p class="bd">Spark DataFrame PageRank, 15 iterations, cached edges <span class="tag t-fix">fix</span> — replaces the NetworkX fallback. GraphFrames LPA for communities.</p></div>
+      <div class="box core"><p class="bt">patient_history</p><p class="bd">Self-join over patient_hash, window functions.</p></div>
+      <div class="box"><p class="bt">train_supervised <span class="tag t-new">new</span></p><p class="bd">LightGBM on adjudicator labels from <code>verdicts</code>.</p></div>
+    </div>
+    <p class="bd" style="margin-top:10px"><code>mode("overwrite")</code> — full atomic rebuild.</p>
+  </div>
+
+  <div class="band">
+    <p class="band-h">Speed layer <span class="tag t-core">core</span></p>
+    <div class="row">
+      <div class="box core"><p class="bt">Redpanda topic <code>claims</code></p><p class="bd">Single binary, ~1 GB. Config switch to file / rate source for Colab and demo-day recovery.</p></div>
+      <div class="box core"><p class="bt">Structured Streaming</p><p class="bd">1h tumbling / 24h sliding windows, 2h watermark. Per-provider ICU rate, procedure rate, cost drift.</p></div>
+      <div class="box core"><p class="bt">Idempotent sink <span class="tag t-fix">fix</span></p><p class="bd">foreachBatch is at-least-once. Guard MERGE with <code>txnAppId</code> / <code>txnVersion</code>.</p></div>
+      <div class="box"><p class="bt">Compaction <span class="tag t-new">new</span></p><p class="bd">OPTIMIZE + VACUUM. Micro-batch MERGE creates small files that visibly degrade DuckDB reads.</p></div>
+    </div>
+    <p class="bd" style="margin-top:10px"><code>MERGE INTO</code> — atomic upsert.</p>
+  </div>
+</div>
+
+<div class="arrow">↓ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ↓</div>
+
+<div class="band">
+  <p class="band-h">Delta lakehouse — single source of truth</p>
+  <p class="bd" style="margin:0 0 10px">ACID · snapshot isolation · time travel · schema enforcement. Both layers write here; no reconciliation code exists anywhere.</p>
+  <div class="row c4">
+    <div class="box"><p class="bt">corpus</p><p class="bd">2–5M claim-lines</p></div>
+    <div class="box"><p class="bt">diag_procedure_norms</p><p class="bd">(icd10, hbp_code)</p></div>
+    <div class="box"><p class="bt">procedure_cost_pctiles</p><p class="bd">(hbp, state, tier)</p></div>
+    <div class="box"><p class="bt">provider_risk</p><p class="bd">pagerank, community</p></div>
+    <div class="box"><p class="bt">patient_history</p><p class="bd">longitudinal features</p></div>
+    <div class="box"><p class="bt">streaming_counters</p><p class="bd">windowed, upserted</p></div>
+    <div class="box"><p class="bt">hbp_rates <span class="tag t-new">new</span></p><p class="bd">published package prices</p></div>
+    <div class="box"><p class="bt">verdicts <span class="tag t-new">new</span></p><p class="bd">decisions + feedback</p></div>
+  </div>
+</div>
+
+<div class="arrow">↓ &nbsp;<code>delta_scan()</code></div>
+
+<div class="band">
+  <p class="band-h">Serving layer</p>
+  <div class="row c3">
+    <div class="box"><p class="bt">store.py</p><p class="bd">DuckDB reads Delta, one consistent snapshot per claim.</p></div>
+    <div class="box"><p class="bt">broadcast</p><p class="bd">Small dims → in-process dicts. Sub-ms lookups.</p></div>
+    <div class="box"><p class="bt">writer.py</p><p class="bd">The only module permitted to write Delta.</p></div>
+  </div>
+</div>
+
+<div class="arrow">↓</div>
+
+<div class="band">
+  <p class="band-h">Evidence computers — deterministic, no LLM</p>
+  <div class="row c3">
+    <div class="box"><p class="bt">rules_baseline <span class="tag t-new">new</span></p><p class="bd">8–12 hard rules incl. billed &gt; HBP package rate. Also the baseline your F1 is measured against.</p></div>
+    <div class="box"><p class="bt">similarity</p><p class="bd">MiniLM ICD↔HBP semantic justification.</p></div>
+    <div class="box"><p class="bt">anomaly</p><p class="bd">Isolation Forest, unsupervised.</p></div>
+    <div class="box"><p class="bt">cost_model</p><p class="bd">LightGBM expected cost → residual vs percentile.</p></div>
+    <div class="box"><p class="bt">supervised <span class="tag t-new">new</span></p><p class="bd">LightGBM on adjudicator labels.</p></div>
+    <div class="box"><p class="bt">explainer</p><p class="bd">SHAP top-k features.</p></div>
+  </div>
+</div>
+
+<div class="arrow">↓ &nbsp;structured evidence bundle</div>
+
+<div class="band">
+  <p class="band-h">Agent pipeline — two agents <span class="tag t-fix">fix</span></p>
+  <div class="row c2">
+    <div class="box"><p class="bt">Agent 1 · Reader</p><p class="bd">Unstructured document → typed fields, Pydantic-validated. Free text is discarded here.</p></div>
+    <div class="box"><p class="bt">Agent 2 · Reasoner</p><p class="bd">Typed evidence → cited verdict, ₹ excess, recommendation. Composes language; computes nothing.</p></div>
+  </div>
+  <p class="bd" style="margin-top:10px">The old Agent 2 (consistency checker) duplicated the similarity model and cost a third of the Groq budget. Groq primary, Gemini fallback, backoff and response cache.</p>
+</div>
+
+<div class="arrow">↓</div>
+
+<div class="band">
+  <p class="band-h">Dashboard &amp; feedback</p>
+  <div class="row c2">
+    <div class="box"><p class="bt">Streamlit</p><p class="bd">Reads verdicts, provider_risk, streaming_counters, quality_report.</p></div>
+    <div class="box"><p class="bt">Feedback loop <span class="tag t-new">new</span></p><p class="bd">Adjudicator decision → MERGE into <code>verdicts</code> → next batch trains the supervised model.</p></div>
+  </div>
+</div>
+
+</div>
+
+<div class="note"><b>The crux worth defending out loud.</b> Every number in the explanation — ₹35,870, support 0.0009, 98.7th percentile — is computed by rules, Spark and scikit-learn before the LLM is invoked. The model's only job is language. That is what makes "explainable" defensible rather than one black box explaining another, and it is also the prompt-injection defence: the Reasoner never sees free text supplied by the party under investigation.</div>
+
+<h2>2. Table contracts</h2>
+<p class="sub">One writer per table. This is what makes Lambda reconciliation tractable.</p>
+
+<table>
+<tr><th>Table</th><th>Written by</th><th>Mode</th><th>Grain</th><th>Read by</th></tr>
+<tr><td><code>corpus</code></td><td>build_corpus</td><td>overwrite</td><td>claim-line</td><td>all batch jobs, eval</td></tr>
+<tr><td><code>diag_procedure_norms</code></td><td>mine_baselines</td><td>overwrite</td><td>(icd10, hbp)</td><td>rules, similarity</td></tr>
+<tr><td><code>procedure_cost_pctiles</code></td><td>mine_baselines</td><td>overwrite</td><td>(hbp, state, tier)</td><td>cost_model</td></tr>
+<tr><td><code>provider_risk</code></td><td>provider_graph</td><td>overwrite</td><td>provider_id</td><td>broadcast, dashboard</td></tr>
+<tr><td><code>patient_history</code></td><td>patient_history</td><td>overwrite</td><td>(patient, claim)</td><td>features</td></tr>
+<tr><td><code>hbp_rates</code></td><td>ingestion gate</td><td>overwrite</td><td>hbp_code</td><td>broadcast, rules</td></tr>
+<tr><td><code>streaming_counters</code></td><td>stream_job <em>only</em></td><td>MERGE, idempotent</td><td>(provider, window)</td><td>features, dashboard</td></tr>
+<tr><td><code>verdicts</code></td><td>dashboard + agents</td><td>MERGE</td><td>claim_id</td><td>dashboard, training, eval</td></tr>
+<tr><td><code>quality_report</code></td><td>ingestion gate</td><td>append</td><td>run_id</td><td>dashboard, eval</td></tr>
+</table>
+
+<div class="note">One intentional collision: <b>streaming_counters</b> is upserted by the speed layer and fully overwritten by the next <code>mine_baselines</code> run. That overwrite <em>is</em> the Lambda reconciliation. <code>reconciliation_test.py</code> asserts the speed values had converged to within tolerance before the overwrite. Everything else has a single writer and no reconciliation question at all.</div>
+
+<h2>3. Sequences</h2>
+<div class="tabs" role="tablist">
+  <button class="tab" role="tab" aria-selected="true" data-seq="a">Batch refresh</button>
+  <button class="tab" role="tab" aria-selected="false" data-seq="b">Streaming</button>
+  <button class="tab" role="tab" aria-selected="false" data-seq="c">Per-claim verdict</button>
+</div>
+
+<div id="seq-a" class="seq">
+<pre>orchestrate.py --stage batch                              target &lt; 45 min @ 5M rows
+
+ ingestion gate   raw → validate → pseudonymise → SNOMED/HBP map → INR → profile
+                  ├─▶ corpus                              overwrite
+                  └─▶ quality_report                      append
+
+ optimize         OPTIMIZE corpus ZORDER BY (provider_id)
+
+ mine_baselines   corpus.groupBy(icd, hbp).agg + approxQuantile
+                  salted aggregation on skewed provider_id
+                  ├─▶ diag_procedure_norms                overwrite
+                  ├─▶ procedure_cost_pctiles              overwrite
+                  └─▶ streaming_counters                  OVERWRITE  ← reconciliation
+
+ provider_graph   corpus ⋈ corpus on shared patients → edges (cached)
+                  15 × PageRank iterations · GraphFrames LPA communities
+                  └─▶ provider_risk                       overwrite
+
+ patient_history  window functions over patient_hash
+                  └─▶ patient_history                     overwrite
+
+ train_supervised corpus ⋈ verdicts → LightGBM → model artifact
+
+ VACUUM RETAIN 168 HOURS
+
+Delta snapshot isolation means DuckDB readers serving live claims during this
+window continue to see the previous consistent version. No downtime, no lock.</pre>
+</div>
+
+<div id="seq-b" class="seq" hidden>
+<pre>producer.py  ──replays corpus subset──▶  Redpanda topic `claims`
+
+stream_job.py
+  readStream.format("kafka")            source: kafka | file | rate  (config switch)
+  parse with the SAME schema module as batch
+  withWatermark("event_time", "2 hours")
+  groupBy(window(event_time, "1 hour"), provider_id)
+     .agg(icu_rate, procedure_rate, cost_drift)
+  foreachBatch(upsert)
+     set txnAppId = "mediguard_speed", txnVersion = batch_id
+     MERGE INTO streaming_counters
+        ON t.provider_id = s.provider_id AND t.window_start = s.window_start
+  every N batches: OPTIMIZE streaming_counters
+
+target end-to-end lag &lt; 60 s (event → counter visible in Delta)</pre>
+</div>
+
+<div id="seq-c" class="seq" hidden>
+<pre>claim + documents arrive                  target p95 &lt; 3 s deterministic, &lt; 30 s with LLM
+
+ 1  ingestion gate validates the single claim      same schema module as batch
+ 2  serving.store — DuckDB delta_scan               ~34 ms
+       ← norms(icd, hbp)        ← cost_pctiles
+       ← patient_history(hash)  ← streaming_counters(provider, latest window)
+    broadcast dicts
+       ← provider_risk          ← hbp_rates
+ 3  Agent 1 Reader — documents → typed clinical facts, Pydantic-validated
+ 4  evidence computers run in parallel               ~812 ms
+       rules_baseline → violations[]     similarity  → diag↔proc scores
+       anomaly        → outlier score    cost_model  → residual vs expected
+       supervised     → probability      explainer   → SHAP top-5
+ 5  Agent 2 Reasoner — evidence bundle → verdict, ₹ excess, verbatim citations
+ 6  write verdict → verdicts (MERGE)
+ 7  dashboard renders → adjudicator decision → MERGE back into verdicts</pre>
+</div>
+
+<h2>4. Where each graded concept is demonstrated</h2>
+<table>
+<tr><th>Concept</th><th>Where</th><th>Measured by</th></tr>
+<tr><td>Distributed aggregation / shuffle</td><td>mine_baselines groupBy + approxQuantile</td><td>records/sec at 1M / 3M / 5M</td></tr>
+<tr><td>Partitioning &amp; data skipping</td><td>corpus partitionBy + Z-ORDER</td><td>files scanned, with vs without</td></tr>
+<tr><td>Broadcast join</td><td>hbp_rates ⋈ corpus</td><td>join time, broadcast vs shuffle</td></tr>
+<tr><td>Skew handling <span class="tag t-new">new</span></td><td>salted provider aggregation and self-join</td><td>wall clock + per-task duration spread</td></tr>
+<tr><td>Iterative graph computation</td><td>Spark PageRank, 15 iterations, cached edges</td><td>time per iteration, cache effect</td></tr>
+<tr><td>Window functions</td><td>patient_history longitudinal features</td><td>—</td></tr>
+<tr><td>Stateful streaming + watermarks</td><td>stream_job windowed counters</td><td>late-event correctness</td></tr>
+<tr><td>Exactly-once / idempotency</td><td>txn-guarded MERGE</td><td>replay test</td></tr>
+<tr><td>ACID / snapshot isolation</td><td>concurrent DuckDB read during overwrite</td><td>no partial reads observed</td></tr>
+<tr><td>Lambda reconciliation</td><td>speed counters vs batch recompute</td><td>convergence within tolerance</td></tr>
+<tr><td>Lakehouse operations <span class="tag t-new">new</span></td><td>OPTIMIZE / VACUUM</td><td>DuckDB latency before vs after</td></tr>
+</table>
+
+<h2>5. Free-tier placement</h2>
+<table>
+<tr><th>Environment</th><th>Runs</th><th>Why</th></tr>
+<tr><td>Local machine <em>(primary)</em></td><td>Redpanda Docker, Structured Streaming, DuckDB, agents, Streamlit</td><td>Broker networking works; you control the JVM</td></tr>
+<tr><td>Google Colab <em>(primary batch)</em></td><td>All PySpark batch jobs, GraphFrames</td><td>You control the JARs; 12 GB is enough at 2–5M rows</td></tr>
+<tr><td>Databricks Free Edition <em>(one demo)</em></td><td>Re-run mine_baselines at full scale</td><td>Provides the "same code, real cluster" data point</td></tr>
+</table>
+<p class="sub">Databricks Free Edition is serverless — it cannot reach a local Redpanda broker and restricts the JARs GraphFrames needs. Demote it to a single scaling demonstration rather than a co-equal batch home.</p>
+
+<footer>Delta Lakehouse-backed Lambda · free-tier · figures are targets, not measurements. Verify all provider free-tier quotas on the day you write the report.</footer>
+
+</div>
+<script>
+document.querySelectorAll('.tab').forEach(function(t){
+  t.addEventListener('click',function(){
+    document.querySelectorAll('.tab').forEach(function(x){x.setAttribute('aria-selected','false')});
+    t.setAttribute('aria-selected','true');
+    ['a','b','c'].forEach(function(k){
+      document.getElementById('seq-'+k).hidden = (k !== t.dataset.seq);
+    });
+  });
+});
+</script>
+</body>
+</html>
